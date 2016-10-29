@@ -1,12 +1,12 @@
-defmodule BowlingAlley.Lanes.Lane do
+defmodule BowlingAlley.Lane do
   use GenServer
 
   ## Client API
   @doc """
   Opens a new lane.
   """
-  def start_link do
-    GenServer.start_link(__MODULE__, :ok, [])
+  def start_link(name) do
+    GenServer.start_link(__MODULE__, :ok, name: name)
   end
 
   @doc """
@@ -43,7 +43,7 @@ defmodule BowlingAlley.Lanes.Lane do
     if Map.has_key?(bowlers, bowler_name) do
       {:noreply, bowlers}
     else
-      {:ok, bowler} = BowlingAlley.Lanes.Bowler.start_link
+      {:ok, bowler} = BowlingAlley.Bowler.start_link
       {:noreply, Map.put(bowlers, bowler_name, bowler)}
     end
   end
