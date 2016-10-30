@@ -6,7 +6,7 @@ defmodule BowlingAlley.Lane do
   Opens a new lane.
   """
   def start_link(name) do
-    GenServer.start_link(__MODULE__, :ok, name: name)
+    GenServer.start_link(__MODULE__, name, name: name)
   end
 
   @doc """
@@ -19,8 +19,11 @@ defmodule BowlingAlley.Lane do
   @doc """
   Lookup the named bowler agent.
   """
-  def get(lane, bowler_name)  do
-    GenServer.call(lane, {:get, bowler_name})
+  def get(lane, bowler_name) when is_atom(lane)  do
+    case :ets.lookup(lane, bowler_name) do
+      [{^bowler_name, pid}] -> {:ok, pid}
+      [] -> :error
+    end
   end
 
   @doc """
@@ -31,20 +34,32 @@ defmodule BowlingAlley.Lane do
   end
 
   ## Server Callbacks
-  def init(:ok) do
-    {:ok, %{}}
+  def init(table) do
+    bowlers = :ets.new(table, [:named_table])
+    refs  = %{}
+    {:ok, {bowlers, refs}}
   end
 
-  def handle_call({:get, bowler_name}, _from, bowlers) do
-    {:reply, Map.fetch(bowlers, bowler_name), bowlers}
-  end
-
-  def handle_cast({:add, bowler_name}, bowlers) do
-    if Map.has_key?(bowlers, bowler_name) do
-      {:noreply, bowlers}
-    else
-      {:ok, bowler} = BowlingAlley.Bowler.start_link
-      {:noreply, Map.put(bowlers, bowler_name, bowler)}
+  def handle_cast({:add, bowler_name}, {bowlers, refs}) do
+   case get(bowlers, bowler_name) do
+     {:ok, _pid} ->
+	{:noreply, {bowlers, refs}}
+     :error ->
+	{:ok, pid} = BowlingAlley.Bowler.Supervisor.start_bowler
+	ref = Process.monitor(pid)
+	refs = Map.put(refs, ref, bowler_name)
+	:ets.insert(bowlers, {bowler_name, pid})
+	{:noreply, {bowlers, refs}}
     end
+  end
+
+  def handle_info({:DOWN, ref, :process, _pid, _reason}, {names, refs}) do
+    {bowler_name, refs} = Map.pop(refs, ref)
+    :ets.delete(names, bowler_name)
+    {:noreply, {names, refs}}
+  end
+
+  def handle_info(_msg, state) do
+    {:noreply, state}
   end
 end

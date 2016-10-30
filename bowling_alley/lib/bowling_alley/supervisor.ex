@@ -2,12 +2,12 @@ defmodule BowlingAlley.Supervisor do
   use Supervisor
 
   def start_link do
-    GenServer.start_link(__MODULE__, :ok)
+    Supervisor.start_link(__MODULE__, :ok)
   end
 
   def init(:ok) do
     children = [
-      worker(BowlingAlley.Lanes.Lane, [BowlingAlley.Lanes.Lane]),
+      worker(BowlingAlley.Lane, [BowlingAlley.Lane]),
       supervisor(BowlingAlley.Bowler.Supervisor, [])
     ]
 

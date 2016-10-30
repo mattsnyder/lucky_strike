@@ -5,8 +5,8 @@ defmodule BowlingAlley.LaneTest do
   alias BowlingAlley.Bowler, as: Bowler
 
   setup context do
-    {:ok, lane} = Lane.start_link(context.test)
-    {:ok, lane: lane}
+    {:ok, _} = Lane.start_link(context.test)
+    {:ok, lane: context.test}
   end
 
   test "spawns a bowler", %{lane: lane} do
@@ -19,25 +19,29 @@ defmodule BowlingAlley.LaneTest do
     assert Bowler.rolls(bowler) == [7]
   end
 
-  # test "removes bowler on exit", %{lane: lane} do
-  #   Lane.add(lane, "Snyder")
-  #   {:ok, bowler} = Lane.get(lane, "Snyder")
-  #   Agent.stop(bowler)
-  #   assert Lane.get(lane, "Snyder") == :error
-  # end
+  test "removes bowler on exit", %{lane: lane} do
+    BowlingAlley.Lane.add(lane, "Joe")
+    {:ok, bucket} = BowlingAlley.Lane.get(lane, "Joe")
+    Agent.stop(bucket)
 
+    # Do a call to ensure the lane processed the DOWN message
+    _ = BowlingAlley.Lane.add(lane, "bogus")
+    assert BowlingAlley.Lane.get(lane, "Joe") == :error
+  end
 
-  # test "removes bowler on crash", %{lane: lane} do
-  #   Lane.add(lane, "Matt")
-  #   {:ok, bowler} = Lane.get(lane, "Matt")
+  test "removes bowler on crash", %{lane: lane} do
+    BowlingAlley.Lane.add(lane, "Joe")
+    {:ok, bucket} = BowlingAlley.Lane.get(lane, "Joe")
 
-  #   # Stop the bucket with non-normal reason
-  #   Process.exit(bowler, :shutdown)
+    # Kill the bucket and wait for the notification
+    Process.exit(bucket, :shutdown)
 
-  #   # Wait until the bucket is dead
-  #   ref = Process.monitor(bowler)
-  #   assert_receive {:DOWN, ^ref, _, _, _}
+    # Wait until the bucket is dead
+    ref = Process.monitor(bucket)
+    assert_receive {:DOWN, ^ref, _, _, _}
 
-  #   assert Lane.get(lane, "Matt") == :error
-  # end
+    # Do a call to ensure the lane processed the DOWN message
+    _ = BowlingAlley.Lane.create(lane, "Matt")
+    assert BowlingAlley.Lane.lookup(lane, "Joe") == :error
+  end
 end
