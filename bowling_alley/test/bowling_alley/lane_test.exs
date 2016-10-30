@@ -41,7 +41,7 @@ defmodule BowlingAlley.LaneTest do
     assert_receive {:DOWN, ^ref, _, _, _}
 
     # Do a call to ensure the lane processed the DOWN message
-    _ = BowlingAlley.Lane.create(lane, "Matt")
-    assert BowlingAlley.Lane.lookup(lane, "Joe") == :error
+    _ = BowlingAlley.Lane.add(lane, "Matt")
+    assert BowlingAlley.Lane.get(lane, "Joe") == :error
   end
 end

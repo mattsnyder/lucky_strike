@@ -30,7 +30,7 @@ defmodule BowlingAlley.Lane do
   Launch a new bowler agent.
   """
   def add(lane, bowler_name) do
-    GenServer.cast(lane, {:add, bowler_name})
+    GenServer.call(lane, {:add, bowler_name})
   end
 
   ## Server Callbacks
@@ -40,16 +40,16 @@ defmodule BowlingAlley.Lane do
     {:ok, {bowlers, refs}}
   end
 
-  def handle_cast({:add, bowler_name}, {bowlers, refs}) do
+  def handle_call({:add, bowler_name}, _from, {bowlers, refs}) do
    case get(bowlers, bowler_name) do
-     {:ok, _pid} ->
-	{:noreply, {bowlers, refs}}
+     {:ok, pid} ->
+	{:reply, pid, {bowlers, refs}}
      :error ->
 	{:ok, pid} = BowlingAlley.Bowler.Supervisor.start_bowler
 	ref = Process.monitor(pid)
 	refs = Map.put(refs, ref, bowler_name)
 	:ets.insert(bowlers, {bowler_name, pid})
-	{:noreply, {bowlers, refs}}
+	{:reply, pid, {bowlers, refs}}
     end
   end
 
